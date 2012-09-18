@@ -1,5 +1,8 @@
 #!/bin/sh
 
+[ -f config.sh ] || { echo "Unable to find config.sh"; exit 1; }
+. config.sh
+
 echo -n "WARNING: Cleaning out everything, proceed? (yes/no) "
 read yn
 
@@ -31,8 +34,8 @@ read yn
 if [ "$yn" = "y" ]; then
     DIR="`pwd`"
     cd ..
-    rm -f unity.tar.gz
-    tar cvf unity.tar unity-base
-    gzip -9 unity.tar
+    rm -f "$AUTO_PROJECT.tar.gz"
+    tar cvf "$AUTO_PROJECT.tar" "$DIR"
+    gzip -9 "$AUTO_PROJECT.tar"
     cd $DIR
 fi
