@@ -4,10 +4,10 @@
 # This was once upon a time taken from GTK or glib or gimp
 
 [ -f config.sh     ] || { echo "Unable to find config.sh"; exit 1; }
-. config.sh
+. ./config.sh
 
 [ -f gen-functions ] || { echo "Unable to find gen-functions"; exit 1; }
-. gen-functions
+. ./gen-functions
 
 ######################################################################
 # Autogen

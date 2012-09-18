@@ -1,7 +1,7 @@
 #!/bin/sh
 
 [ -f config.sh ] || { echo "Unable to find config.sh"; exit 1; }
-. config.sh
+. ./config.sh
 
 echo -n "WARNING: Cleaning out everything, proceed? (yes/no) "
 read yn
