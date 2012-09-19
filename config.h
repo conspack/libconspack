@@ -1,8 +1,7 @@
 #include "defs.h"
-/* $Id: config.h,v 1.3 2002/05/01 23:38:26 radkade1 Exp $ -*- C -*-
- *
- * The Unity Project
- * Copyright (C) 2001  Ryan Pavlik
+/* 
+ * libconspack
+ * Copyright (C) 2012  Ryan Pavlik
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -20,8 +19,8 @@
  *
  */
 
-#ifndef UNITY_CONFIG_H
-#define UNITY_CONFIG_H
+#ifndef CPK_CONFIG_H
+#define CPK_CONFIG_H
 
 #ifndef __GNUC__
      /* We can use this extension to get rid of some superfluous warnings */
@@ -30,24 +29,4 @@
 
 #define _GNU_SOURCE
 
-/* Later we will fully enable gettext */
-#if 0
-#    include <libintl.h>
-#    define _(S)  gettext(S)
-#    define gettext_noop(S) (S)
-#    define N_(S) gettext_noop(S)
-#else
-#    define _(S)  (S)
-#    define N_(S) (S)
-#    define textdomain(Domain)
-#    define bindtextdomain(Package, Directory)
-#endif
-
-/***
- *** Settings
- **/
-#define DEF_TCP_PORT      42421
-#define DEF_SOCKET_PATH   "/tmp/.s.unity"
-#define DEF_PROCESS_LIMIT 0
-
-#endif /* UNITY_CONFIG_H */
+#endif /* CPK_CONFIG_H */
