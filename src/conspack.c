@@ -36,6 +36,8 @@ void cpk_print_buffer(cpk_output_t *out) {
 
 int main() {
     cpk_output_t out;
+    cpk_input_t in;
+    cpk_object_t obj;
     int container_elements = 3, i;
 
     cpk_output_init(&out);
@@ -64,6 +66,19 @@ int main() {
     cpk_write8(&out, CPK_NUMBER | CPK_DOUBLE_FLOAT);
     cpk_write_double(&out, -100.01);
     cpk_print_buffer(&out);
+
+    cpk_input_init(&in, out.buffer, out.buffer_used);
+    cpk_decode(&in, &obj);
+
+    printf("Header: %hd\n", (short)obj.header);
+
+    if(CPK_IS_NUMBER(obj.header)) {
+        printf("Is number\n");
+        if(CPK_NUMBER_TYPE(obj.header) == CPK_DOUBLE_FLOAT)
+            printf("Is double: %lf\n", obj.number.val.double_float);
+    }
+
+    cpk_free(&obj);
     cpk_output_clear(&out);
 
     cpk_output_fini(&out);

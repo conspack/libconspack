@@ -64,7 +64,7 @@
 #define CPK_INDEX                 0xA0
 #define CPK_INDEX_MASK            0xE0
 
-#define CPK_ERROR                 0xFFFF
+#define CPK_ERROR                 -1
 
 #define CPK_SIZE_8        0x00
 #define CPK_SIZE_16       0x01
@@ -157,23 +157,26 @@ typedef struct _cpk_bool {
     uint8_t val;
 } cpk_bool_t;
 
-typedef union _cpk_number {
+typedef struct _cpk_number {
     int16_t header;
-    uint8_t uint8;
-    uint16_t uint16;
-    uint32_t uint32;
-    uint64_t uint64;
 
-    int8_t int8;
-    int16_t int16;
-    int32_t int32;
-    int64_t int64;
+    union {
+        uint8_t uint8;
+        uint16_t uint16;
+        uint32_t uint32;
+        uint64_t uint64;
 
-    uint8_t int128_bytes[16];
-    uint8_t uint128_bytes[16];
+        int8_t int8;
+        int16_t int16;
+        int32_t int32;
+        int64_t int64;
 
-    float single_float;
-    double double_float;
+        uint8_t int128_bytes[16];
+        uint8_t uint128_bytes[16];
+
+        float single_float;
+        double double_float;
+    } val;
 } cpk_number_t;
 
 typedef struct _cpk_rational {

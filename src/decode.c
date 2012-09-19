@@ -61,7 +61,7 @@ int cpk_read16(cpk_input_t *in, uint16_t *dest) {
         return read(in->fd, dest, 2);
     else {
         if(!cpk_input_has(in, 2)) return -1;
-        *dest = *(uint16_t*)(in->buffer + in->buffer_read);
+        *dest = net16(*(uint16_t*)(in->buffer + in->buffer_read));
         in->buffer_read += 2;
     }
 
@@ -73,7 +73,7 @@ int cpk_read32(cpk_input_t *in, uint32_t *dest) {
         return read(in->fd, dest, 4);
     else {
         if(!cpk_input_has(in, 4)) return -1;
-        *dest = *(uint32_t*)(in->buffer + in->buffer_read);
+        *dest = net32(*(uint32_t*)(in->buffer + in->buffer_read));
         in->buffer_read += 4;
     }
 
@@ -85,7 +85,7 @@ int cpk_read64(cpk_input_t *in, uint64_t *dest) {
         return read(in->fd, dest, 8);
     else {
         if(!cpk_input_has(in, 8)) return -1;
-        *dest = *(uint64_t*)(in->buffer + in->buffer_read);
+        *dest = net64(*(uint64_t*)(in->buffer + in->buffer_read));
         in->buffer_read += 8;
     }
 
@@ -148,30 +148,30 @@ void cpk_decode_number(cpk_input_t *in, cpk_object_t *obj, uint8_t h) {
     switch(CPK_NUMBER_TYPE(h)) {
         case CPK_INT8:
         case CPK_UINT8:
-            READ(8, in, &obj->number.uint8, obj);
+            READ(8, in, &obj->number.val.uint8, obj);
             break;
 
         case CPK_INT16:
         case CPK_UINT16:
-            READ(16, in, &obj->number.uint16, obj);
+            READ(16, in, &obj->number.val.uint16, obj);
             break;
 
         case CPK_INT32:
         case CPK_UINT32:
-            READ(32, in, &obj->number.uint32, obj);
+            READ(32, in, &obj->number.val.uint32, obj);
             break;
 
         case CPK_INT64:
         case CPK_UINT64:
-            READ(64, in, &obj->number.uint64, obj);
+            READ(64, in, &obj->number.val.uint64, obj);
             break;
 
         case CPK_SINGLE_FLOAT:
-            READ(32, in, &obj->number.uint32, obj);
+            READ(32, in, &obj->number.val.uint32, obj);
             break;
 
         case CPK_DOUBLE_FLOAT:
-            READ(64, in, &obj->number.uint64, obj);
+            READ(64, in, &obj->number.val.uint64, obj);
             break;
 
         case CPK_COMPLEX:
@@ -193,12 +193,24 @@ void cpk_decode(cpk_input_t *in, cpk_object_t *obj) {
     uint8_t header;
 
     READ(8, in, &header, obj);
+    obj->header = (unsigned short)header;
 
     if(CPK_IS_BOOL(header)) {
         READ(8, in, &obj->bool.val, obj);
-        return;
     } else if(CPK_IS_NUMBER(header)) {
         cpk_decode_number(in, obj, header);
-        return;
+    }
+}
+
+void cpk_free(cpk_object_t *obj) {
+    if(CPK_IS_NUMBER(obj->header)) {
+        if(CPK_NUMBER_TYPE(obj->header) == CPK_COMPLEX ||
+           CPK_NUMBER_TYPE(obj->header) == CPK_RATIONAL) {
+            cpk_free(obj->complex.r);
+            cpk_free(obj->complex.i);
+            
+            free(obj->complex.r);
+            free(obj->complex.i);
+        }
     }
 }
