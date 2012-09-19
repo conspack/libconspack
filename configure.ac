@@ -28,6 +28,7 @@ dnl Header checking
 AC_HEADER_STDC
 AC_CHECK_HEADERS([libintl.h limits.h stdlib.h])
 AC_CHECK_HEADERS([sys/types.h])
+AC_CHECK_HEADERS([bits/byteswap.h])
 
 dnl Typedef checking
 AC_CHECK_TYPES([int8_t,  int16_t,  int32_t,  int64_t,
@@ -37,6 +38,7 @@ AC_CHECK_TYPES([int8_t,  int16_t,  int32_t,  int64_t,
 dnl Library function checking
 AC_FUNC_MALLOC
 AC_CHECK_FUNCS([getopt_long])
+AC_CHECK_DECLS([__bswap_16, __bswap_32, __bswap_64])
 
 dnl Miscellaneousness
 AC_C_BIGENDIAN
@@ -53,7 +55,7 @@ AC_ARG_ENABLE(debug, [  --enable-debug          enable debugging output [[defaul
 ])
 
 dnl And output
-AC_CONFIG_FILES([Makefile src/Makefile src/include/Makefile src/test/Makefile 
+AC_CONFIG_FILES([Makefile src/include/conspack/Makefile src/include/Makefile src/Makefile src/test/Makefile 
                ])
 
 AC_OUTPUT

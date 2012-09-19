@@ -3,5 +3,5 @@
 ###
 
 # Project name
-export AUTO_PROJECT="PROJECT"
+export AUTO_PROJECT="libconspack"
 

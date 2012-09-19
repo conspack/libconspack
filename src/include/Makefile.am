@@ -2,4 +2,4 @@
 
 include $(top_srcdir)/make-extras
 
-#SUBDIRS =
+SUBDIRS = conspack

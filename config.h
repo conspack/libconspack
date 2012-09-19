@@ -29,4 +29,14 @@
 
 #define _GNU_SOURCE
 
+#if WORDS_BIGENDIAN
+#  define net16(x) (x)
+#  define net32(x) (x)
+#  define net64(x) (x)
+#else
+#  define net16(x) __bswap_16(x)
+#  define net32(x) __bswap_32(x)
+#  define net64(x) __bswap_64(x)
+#endif
+
 #endif /* CPK_CONFIG_H */
