@@ -2,19 +2,15 @@
  * libconspack
  * Copyright (C) 2012  Ryan Pavlik
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser General Public
+ * License (LGPL) version 2.1 which accompanies this distribution, and
+ * is available at http://www.gnu.org/licenses/lgpl-2.1.html
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * This library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
  *
  */
 
@@ -24,11 +20,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-/* Headers */
+ /* Headers */
 
 #define CPK_BOOL                  0x00
 #define CPK_BOOL_MASK             0xFE
 
+#define CPK_NIL                   0x00
 #define CPK_FALSE                 0x00
 #define CPK_TRUE                  0x01
 
@@ -71,11 +68,12 @@
 #define CPK_SIZE_32       0x02
 #define CPK_SIZE_MASK     0x03
 
-#define CPK_CONTAINER_VECTOR 0x00
-#define CPK_CONTAINER_LIST   0x08
-#define CPK_CONTAINER_MAP    0x10
-#define CPK_CONTAINER_TMAP   0x18
-#define CPK_CONTAINER_FIXED  0x04
+#define CPK_CONTAINER_VECTOR    0x00
+#define CPK_CONTAINER_LIST      0x08
+#define CPK_CONTAINER_MAP       0x10
+#define CPK_CONTAINER_TMAP      0x18
+#define CPK_CONTAINER_TYPE_MASK 0x18
+#define CPK_CONTAINER_FIXED     0x04
 
 #define CPK_REFTAG_INLINE 0x10
 #define CPK_SYMBOL_KEYWORD 0x01
@@ -116,7 +114,7 @@
 
 #define CPK_IS_ERROR(h) ((h) == CPK_ERROR)
 
-/* Encoding */
+ /* Encoding */
 
 #define CPK_DEFAULT_BUFFER 16
 
@@ -133,15 +131,19 @@ void cpk_output_init_fd(cpk_output_t *out, int fd);
 void cpk_output_fini(cpk_output_t *out);
 void cpk_output_clear(cpk_output_t *out);
 
-void cpk_write8(cpk_output_t *out, uint8_t val);
-void cpk_write16(cpk_output_t *out, uint16_t val);
-void cpk_write32(cpk_output_t *out, uint32_t val);
-void cpk_write64(cpk_output_t *out, uint64_t val);
+int cpk_write8(cpk_output_t *out, uint8_t val);
+int cpk_write16(cpk_output_t *out, uint16_t val);
+int cpk_write32(cpk_output_t *out, uint32_t val);
+int cpk_write64(cpk_output_t *out, uint64_t val);
 
-void cpk_write_single(cpk_output_t *out, float val);
-void cpk_write_double(cpk_output_t *out, double val);
+int cpk_write_single(cpk_output_t *out, float val);
+int cpk_write_double(cpk_output_t *out, double val);
 
-void cpk_write_bytes(cpk_output_t *out, const uint8_t *val, size_t len);
+int cpk_write_bytes(cpk_output_t *out, const uint8_t *val, size_t len);
+int cpk_write_string(cpk_output_t *out, const char *str);
+int cpk_snprintf(cpk_output_t *out, size_t size, const char *fmt, ...);
+
+int cpk_print(cpk_output_t *out);
 
 void cpk_encode_container(cpk_output_t *out, uint8_t type,
                           uint32_t size, uint8_t fixed_header);
@@ -150,7 +152,7 @@ void cpk_encode_string(cpk_output_t *out, const char *str);
 
 void cpk_encode_ref(cpk_output_t *out, uint8_t type, uint32_t val);
 
-/* Decoding */
+ /* Decoding */
 
 typedef struct _cpk_bool {
     int16_t header;
@@ -193,6 +195,7 @@ typedef struct _cpk_container {
     int16_t header;
     uint32_t size;
     uint8_t fixed_header;
+    union _cpk_object **obj;
 } cpk_container_t;
 
 typedef struct _cpk_string {
@@ -239,10 +242,10 @@ typedef struct _cpk_error {
 #define CPK_ERR_BAD_SIZE 0x02
 #define CPK_ERR_BAD_TYPE 0x03
 
-#define CPK_ERR_EOF_MSG "End of input"
-#define CPK_ERR_BAD_HEADER_MSG "Bad header value"
-#define CPK_ERR_BAD_SIZE_MSG "Bad size type"
-#define CPK_ERR_BAD_TYPE_MSG "Bad type"
+extern const char *CPK_ERR_EOF_MSG;
+extern const char *CPK_ERR_BAD_HEADER_MSG;
+extern const char *CPK_ERR_BAD_SIZE_MSG;
+extern const char *CPK_ERR_BAD_TYPE_MSG;
 
 typedef union _cpk_object {
     int16_t header;
@@ -278,8 +281,44 @@ int cpk_read32(cpk_input_t *in, uint32_t *dest);
 int cpk_read64(cpk_input_t *in, uint64_t *dest);
 int cpk_read_bytes(cpk_input_t *in, uint8_t *dest, size_t len);
 
+uint8_t cpk_decode_header(uint8_t header);
 void cpk_decode(cpk_input_t *in, cpk_object_t *obj);
+cpk_object_t* cpk_decode_r(cpk_input_t *in);
 
 void cpk_free(cpk_object_t *obj);
+void cpk_free_r(cpk_object_t *obj);
+
+ /* Explain */
+
+extern const char *CPK_BOOL_STR;
+extern const char *CPK_NIL_STR;
+extern const char *CPK_TRUE_STR;
+extern const char *CPK_NUMBER_STR;
+extern const char *CPK_STRING_STR;
+extern const char *CPK_REF_STR;
+extern const char *CPK_REMOTE_REF_STR;
+extern const char *CPK_TAG_STR;
+extern const char *CPK_CONS_STR;
+extern const char *CPK_PACKAGE_STR;
+extern const char *CPK_SYMBOL_STR;
+extern const char *CPK_INDEX_STR;
+
+extern const char *CPK_VECTOR_STR;
+extern const char *CPK_LIST_STR;
+extern const char *CPK_MAP_STR;
+extern const char *CPK_TMAP_STR;
+
+extern const char *CPK_INLINE_STR;
+extern const char *CPK_FIXED_STR;
+extern const char *CPK_KEYWORD_STR;
+
+extern const char *CPK_INT_STR;
+extern const char *CPK_UINT_STR;
+extern const char *CPK_SINGLE_FLOAT_STR;
+extern const char *CPK_DOUBLE_FLOAT_STR;
+extern const char *CPK_COMPLEX_STR;
+extern const char *CPK_RATIONAL_STR;
+
+void cpk_explain_object(cpk_output_t *out, cpk_object_t *obj);
 
 #endif /* CONSPACK_H */

@@ -2,27 +2,26 @@
  * libconspack
  * Copyright (C) 2012  Ryan Pavlik
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser General Public
+ * License (LGPL) version 2.1 which accompanies this distribution, and
+ * is available at http://www.gnu.org/licenses/lgpl-2.1.html
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * This library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
  *
  */
 
 #include "config.h"
 #include "conspack/conspack.h"
 
+#include <stdio.h>
 #include <memory.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdarg.h>
 
 void cpk_output_init(cpk_output_t *out) {
     out->buffer_size = CPK_DEFAULT_BUFFER;
@@ -58,71 +57,99 @@ void cpk_ensure_buffer(cpk_output_t *out, size_t bytes_needed) {
     out->buffer      = realloc(out->buffer, out->buffer_size);
 }
 
-void cpk_write8(cpk_output_t *out, uint8_t val) {
+int cpk_write8(cpk_output_t *out, uint8_t val) {
     if(out->fd >= 0)
-        write(out->fd, &val, 1);
+        return write(out->fd, &val, 1);
     else {
         cpk_ensure_buffer(out, 1);
         out->buffer[out->buffer_used] = val;
         out->buffer_used++;
+        return 1;
     }
 }
 
-void cpk_write16(cpk_output_t *out, uint16_t val) {
+int cpk_write16(cpk_output_t *out, uint16_t val) {
     val = net16(val);
 
     if(out->fd >= 0)
-        write(out->fd, &val, 2);
+        return write(out->fd, &val, 2);
     else {
         cpk_ensure_buffer(out, 2);
         *(uint16_t*)(out->buffer + out->buffer_used) = val;
         out->buffer_used += 2;
+        return 2;
     }
 }
 
-void cpk_write32(cpk_output_t *out, uint32_t val) {
+int cpk_write32(cpk_output_t *out, uint32_t val) {
     val = net32(val);
 
     if(out->fd >= 0)
-        write(out->fd, &val, 4);
+        return write(out->fd, &val, 4);
     else {
         cpk_ensure_buffer(out, 4);
         *(uint32_t*)(out->buffer + out->buffer_used) = val;
         out->buffer_used += 4;
+        return 4;
     }
 }
 
-void cpk_write64(cpk_output_t *out, uint64_t val) {
+int cpk_write64(cpk_output_t *out, uint64_t val) {
     val = net64(val);
 
     if(out->fd >= 0)
-        write(out->fd, &val, 8);
+        return write(out->fd, &val, 8);
     else {
         cpk_ensure_buffer(out, 8);
         *(uint64_t*)(out->buffer + out->buffer_used) = val;
         out->buffer_used += 8;
+        return 8;
     }
 }
 
-void cpk_write_single(cpk_output_t *out, float val) {
+int cpk_write_single(cpk_output_t *out, float val) {
     uint32_t *ptr = (uint32_t*)&val;
-    cpk_write32(out, *ptr);
+    return cpk_write32(out, *ptr);
 }
 
-void cpk_write_double(cpk_output_t *out, double val) {
+int cpk_write_double(cpk_output_t *out, double val) {
     uint64_t *ptr = (uint64_t*)&val;
-    cpk_write64(out, *ptr);
+    return cpk_write64(out, *ptr);
 }
 
-void cpk_write_bytes(cpk_output_t *out, const uint8_t *val, size_t len) {
+int cpk_write_bytes(cpk_output_t *out, const uint8_t *val, size_t len) {
     if(out->fd >= 0)
-        write(out->fd, &val, len);
+        return write(out->fd, &val, len);
     else {
         cpk_ensure_buffer(out, len);
         memcpy(out->buffer + out->buffer_used, val, len);
         out->buffer_used += len;
+        return len;
     }
 }
+
+int cpk_write_string(cpk_output_t *out, const char *str) {
+   return cpk_write_bytes(out, (uint8_t*)str, strlen(str));
+}
+
+int cpk_print(cpk_output_t *out) {
+    return printf("%*s\n", (int)out->buffer_used, out->buffer);
+}
+
+int cpk_snprintf(cpk_output_t *out, size_t size, const char *fmt, ...) {
+    va_list ap;
+    int count = 0;
+    va_start(ap, fmt);
+    
+    cpk_ensure_buffer(out, size);
+    count = vsnprintf(out->buffer + out->buffer_used, size, fmt, ap);
+    out->buffer_used += count; /* This excludes \0 */
+    
+    va_end(ap);
+
+    return count;
+}
+    
 
 void cpk_encode_size_header(cpk_output_t *out, uint8_t header,
                             uint32_t size) {

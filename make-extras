@@ -2,4 +2,4 @@
 
 #ETAGS_ARGS = --declarations --members
 
-INCLUDES = -I$(top_srcdir)/src/include -I$(top_srcdir)
+AM_CPPFLAGS = -I$(top_srcdir)/src/include -I$(top_srcdir)

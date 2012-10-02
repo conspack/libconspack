@@ -5,7 +5,7 @@ include $(top_srcdir)/make-extras
 SUBDIRS = include test
 
 lib_LTLIBRARIES = libconspack.la
-libconspack_la_SOURCES = encode.c decode.c
+libconspack_la_SOURCES = encode.c decode.c explain.c
 
 bin_PROGRAMS = conspack
 conspack_SOURCES = conspack.c

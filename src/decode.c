@@ -24,6 +24,11 @@
 #include <memory.h>
 #include <string.h>
 
+const char *CPK_ERR_EOF_MSG = "End of input";
+const char *CPK_ERR_BAD_HEADER_MSG = "Bad header value";
+const char *CPK_ERR_BAD_SIZE_MSG = "Bad size type";
+const char *CPK_ERR_BAD_TYPE_MSG = "Bad type";
+
 void cpk_input_init(cpk_input_t *in, uint8_t *data, size_t len) {
     in->buffer = data;
     in->buffer_read = 0;
@@ -104,11 +109,11 @@ int cpk_read_bytes(cpk_input_t *in, uint8_t *dest, size_t len) {
     return len;
 }
 
-void cpk_err(cpk_object_t *obj, uint32_t code, char *reason,
+void cpk_err(cpk_object_t *obj, uint32_t code, const char *reason,
              uint8_t value, size_t pos) {
     obj->header = CPK_ERROR;
     obj->error.code = code;
-    obj->error.reason = reason;
+    obj->error.reason = (char*)reason;
     obj->error.value = value;
     obj->error.pos = pos;
 }
@@ -148,6 +153,22 @@ void cpk_err(cpk_object_t *obj, uint32_t code, char *reason,
         free(dest); \
         dest = NULL; \
     } \
+}
+
+uint8_t cpk_decode_header(uint8_t header) {
+    uint8_t tmp = header & 0xF0;
+    uint8_t ref = header & 0xE0;
+
+    if(header == 0x64)
+        return header;
+    else if(ref == CPK_REF || ref == CPK_TAG || ref == CPK_INDEX)
+        return ref;
+    else if((header & CPK_SYMBOL_MASK) == CPK_SYMBOL)
+        return CPK_SYMBOL;
+    else if(tmp == 0x80)
+        return header;
+
+    return tmp;
 }
 
 void cpk_decode_number(cpk_input_t *in, cpk_object_t *obj, uint8_t h) {
@@ -219,36 +240,62 @@ void cpk_decode(cpk_input_t *in, cpk_object_t *obj) {
     READ(8, in, &header, obj);
     obj->header = (unsigned short)header;
 
-    if(CPK_IS_BOOL(header)) {
-        READ(8, in, &obj->bool.val, obj);
-    } else if(CPK_IS_NUMBER(header)) {
-        cpk_decode_number(in, obj, header);
-    } else if(CPK_IS_CONTAINER(header)) {
-        obj->container.size = cpk_decode_size(in, header, obj);
-        if(header & CPK_CONTAINER_FIXED)
-            READ(8, in, &obj->container.fixed_header, obj);
-    } else if(CPK_IS_STRING(header)) {
-        obj->string.size = cpk_decode_size(in, header, obj);
-        obj->string.data = malloc(obj->string.size+1);
-        READN(obj->string.size, in, obj->string.data, obj);
-        obj->string.data[obj->string.size] = 0;
-    } else if(CPK_IS_REF(header) ||
-              CPK_IS_TAG(header) ||
-              CPK_IS_INDEX(header)) {
-        if(header & CPK_REFTAG_INLINE)
-            obj->ref.val = header & 0xF;
-        else
-            obj->ref.val = cpk_decode_size(in, header, obj);
-    } else if(CPK_IS_REMOTE_REF(header)) {
-        obj->rref.val = NULL;
-    } else if(CPK_IS_CONS(header)) {
-        obj->cons.car = NULL;
-        obj->cons.cdr = NULL;
-    } else if(CPK_IS_PACKAGE(header)) {
-        obj->package.name = NULL;
-    } else if(CPK_IS_SYMBOL(header)) {
-        obj->symbol.name = NULL;
-        obj->symbol.package = NULL;
+    switch(cpk_decode_header(obj->header)) {
+        case CPK_BOOL:
+            READ(8, in, &obj->bool.val, obj);
+            break;
+
+        case CPK_NUMBER:
+            cpk_decode_number(in, obj, header);
+            break;
+            
+        case CPK_CONTAINER:
+            obj->container.size = cpk_decode_size(in, header, obj);
+            obj->container.obj  = NULL;
+            if(header & CPK_CONTAINER_FIXED)
+                READ(8, in, &obj->container.fixed_header, obj);
+            if(header & CPK_CONTAINER_MAP)
+                obj->container.size *= 2;
+            break;
+            
+        case CPK_STRING:
+            obj->string.size = cpk_decode_size(in, header, obj);
+            obj->string.data = malloc(obj->string.size+1);
+            READN(obj->string.size, in, obj->string.data, obj);
+            obj->string.data[obj->string.size] = 0;
+            break;
+
+        case CPK_REF:
+        case CPK_TAG:
+        case CPK_INDEX:
+            if(header & CPK_REFTAG_INLINE)
+                obj->ref.val = header & 0xF;
+            else
+                obj->ref.val = cpk_decode_size(in, header, obj);
+            
+            break;
+
+        case CPK_REMOTE_REF:
+            obj->rref.val = NULL;
+            break;
+            
+        case CPK_CONS:
+            obj->cons.car = NULL;
+            obj->cons.cdr = NULL;
+            break;
+
+        case CPK_PACKAGE:
+            obj->package.name = NULL;
+            break;
+
+        case CPK_SYMBOL:
+            obj->symbol.name = NULL;
+            obj->symbol.package = NULL;
+            break;
+
+        default:
+            cpk_err(obj, CPK_ERR_BAD_HEADER, CPK_ERR_BAD_HEADER_MSG,
+                    header, in->buffer_read);
     }
 }
 
@@ -267,5 +314,7 @@ void cpk_free(cpk_object_t *obj) {
     } else if(CPK_IS_REMOTE_REF(obj->header)) {
         cpk_free(obj->rref.val);
         free(obj->rref.val);
+    } else if(CPK_IS_CONTAINER(obj->header) && obj->container.obj) {
+        free(obj->container.obj);
     }
 }

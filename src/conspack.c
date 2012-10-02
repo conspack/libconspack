@@ -2,19 +2,15 @@
  * libconspack
  * Copyright (C) 2012  Ryan Pavlik
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser General Public
+ * License (LGPL) version 2.1 which accompanies this distribution, and
+ * is available at http://www.gnu.org/licenses/lgpl-2.1.html
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * This library is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ * Lesser General Public License for more details.
  *
  */
 
@@ -23,6 +19,7 @@
 #include "conspack/conspack.h"
 
 #include <stdio.h>
+#include <inttypes.h>
 
 void cpk_print_buffer(cpk_output_t *out) {
     int i;
@@ -36,50 +33,110 @@ void cpk_print_buffer(cpk_output_t *out) {
 
 int main() {
     cpk_output_t out;
-    cpk_input_t in;
-    cpk_object_t obj;
-    int container_elements = 3, i;
+    cpk_object_t obj, a, b;
+    int i, j;
 
     cpk_output_init(&out);
 
-    cpk_encode_container(&out, CPK_CONTAINER_VECTOR, container_elements, 0);
-    for(i = 0; i < container_elements; i++) {
-        cpk_write8(&out, CPK_NUMBER | CPK_INT8);
-        cpk_write8(&out, i);
+    obj.header = CPK_SYMBOL;
+    obj.symbol.name = &a;
+    obj.symbol.package = &b;
+
+    a.header = CPK_STRING | CPK_SIZE_8;
+    a.string.size = sizeof("name") - 1;
+    a.string.data = "name";
+
+    b.header = CPK_STRING | CPK_SIZE_8;
+    b.string.size = sizeof("package") - 1;
+    b.string.data = "package";
+        
+    cpk_explain_object(&out, &obj);
+    cpk_print(&out);
+}
+
+cpk_object_t* cpk_decode_r(cpk_input_t *in) {
+    cpk_object_t *obj = calloc(1, sizeof(cpk_object_t)),
+                 *tmp = NULL;
+    uint32_t i = 0;
+
+    cpk_decode(in, obj);
+    if(CPK_IS_ERROR(tmp->header))
+        goto error;
+
+    switch(cpk_decode_header(obj->header)) {
+        case CPK_REMOTE_REF:
+            tmp = cpk_decode_r(in);
+            if(CPK_IS_ERROR(tmp->header))
+                goto error;
+            
+            obj->rref.val = tmp;
+            break;
+
+        case CPK_CONS:
+            tmp = cpk_decode_r(in);
+            if(CPK_IS_ERROR(tmp->header))
+                goto error;
+
+            obj->cons.car = tmp;
+
+            tmp = cpk_decode_r(in);
+            if(CPK_IS_ERROR(tmp->header))
+                goto error;
+
+            obj->cons.cdr = tmp;
+            break;
+
+        case CPK_CONTAINER:
+            obj->container.obj = calloc(obj->container.size,
+                                        sizeof(cpk_object_t*));
+            for(i = 0; i < obj->container.size; i++) {
+                tmp = cpk_decode_r(in);
+                if(CPK_IS_ERROR(tmp->header))
+                    goto error;
+                obj->container.obj[i] = tmp;
+            }
+
+            break;
     }
 
-    cpk_print_buffer(&out);
-    cpk_output_clear(&out);
+ end:
+    return obj;
 
-    cpk_encode_container(&out, CPK_CONTAINER_VECTOR, container_elements,
-                         CPK_NUMBER | CPK_INT8);
-    for(i = 0; i < container_elements; i++)
-        cpk_write8(&out, i);
+ error:
+    if(CPK_IS_ERROR(obj->header))
+        return obj;
 
-    cpk_print_buffer(&out);
-    cpk_output_clear(&out);
+    cpk_free_r(obj);
+    return tmp;
+}
 
-    cpk_encode_string(&out, "hello world");
-    cpk_print_buffer(&out);
-    cpk_output_clear(&out);
+void cpk_free_r(cpk_object_t *obj) {
+    cpk_object_t *tmp = NULL;
+    uint32_t i = 0;
+    
+    if(!obj) return;
 
-    cpk_write8(&out, CPK_NUMBER | CPK_DOUBLE_FLOAT);
-    cpk_write_double(&out, -100.01);
-    cpk_print_buffer(&out);
+    switch(cpk_decode_header(obj->header)) {
+        case CPK_REMOTE_REF:
+            cpk_free_r(obj->rref.val);
+            break;
 
-    cpk_input_init(&in, out.buffer, out.buffer_used);
-    cpk_decode(&in, &obj);
+        case CPK_CONS:
+            cpk_free_r(obj->cons.car);
+            cpk_free_r(obj->cons.cdr);
+            break;
 
-    printf("Header: %hd\n", (short)obj.header);
+        case CPK_CONTAINER:
+            for(i = 0; i < obj->container.size; i++) {
+                if(obj->container.obj[i])
+                    cpk_free_r(obj->container.obj[i]);
+                else
+                    break;
+            }
 
-    if(CPK_IS_NUMBER(obj.header)) {
-        printf("Is number\n");
-        if(CPK_NUMBER_TYPE(obj.header) == CPK_DOUBLE_FLOAT)
-            printf("Is double: %lf\n", obj.number.val.double_float);
+            free(obj->container.obj);
+            break;
     }
 
-    cpk_free(&obj);
-    cpk_output_clear(&out);
-
-    cpk_output_fini(&out);
+    free(obj);
 }
