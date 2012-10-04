@@ -21,6 +21,7 @@
 #include "config.h"
 #include "conspack/conspack.h"
 
+#include <stdio.h>
 #include <memory.h>
 #include <string.h>
 
@@ -140,7 +141,7 @@ void cpk_err(cpk_object_t *obj, uint32_t code, const char *reason,
  \
     dest = malloc(sizeof(cpk_object_t)); \
  \
-    cpk_decode(__in, dest); \
+    cpk_decode(__in, dest, 0);         \
     if(CPK_IS_ERROR(dest->header)) { \
         *__err = *dest; \
         free(dest); \
@@ -234,11 +235,15 @@ cpk_decode_size(cpk_input_t *in, uint8_t header, cpk_object_t *err) {
     }
 }
 
-void cpk_decode(cpk_input_t *in, cpk_object_t *obj) {
+void cpk_decode(cpk_input_t *in, cpk_object_t *obj, int skip_header) {
     uint8_t header;
 
-    READ(8, in, &header, obj);
-    obj->header = (unsigned short)header;
+    if(!skip_header) {
+        READ(8, in, &header, obj);
+        obj->header = (unsigned short)header;
+    } else {
+        header = obj->header;
+    }
 
     switch(cpk_decode_header(obj->header)) {
         case CPK_BOOL:
@@ -317,4 +322,98 @@ void cpk_free(cpk_object_t *obj) {
     } else if(CPK_IS_CONTAINER(obj->header) && obj->container.obj) {
         free(obj->container.obj);
     }
+}
+
+cpk_object_t* cpk_decode_r(cpk_input_t *in) {
+    return cpk_decode_rh(in, 0);
+}
+
+cpk_object_t* cpk_decode_rh(cpk_input_t *in, uint8_t header) {
+    cpk_object_t *obj = calloc(1, sizeof(cpk_object_t)),
+                 *tmp = NULL;
+    uint32_t i = 0;
+
+    if(header)
+        obj->header = header;
+
+    cpk_decode(in, obj, header != 0);
+    if(CPK_IS_ERROR(obj->header))
+        goto error;
+
+    switch(cpk_decode_header(obj->header)) {
+        case CPK_REMOTE_REF:
+            tmp = cpk_decode_rh(in, 0);
+            if(CPK_IS_ERROR(tmp->header))
+                goto error;
+            
+            obj->rref.val = tmp;
+            break;
+
+        case CPK_CONS:
+            tmp = cpk_decode_rh(in, 0);
+            if(CPK_IS_ERROR(tmp->header))
+                goto error;
+
+            obj->cons.car = tmp;
+
+            tmp = cpk_decode_rh(in, 0);
+            if(CPK_IS_ERROR(tmp->header))
+                goto error;
+
+            obj->cons.cdr = tmp;
+            break;
+
+        case CPK_CONTAINER:
+            obj->container.obj = calloc(obj->container.size,
+                                        sizeof(cpk_object_t*));
+            for(i = 0; i < obj->container.size; i++) {
+                tmp = cpk_decode_rh(in, obj->container.fixed_header);
+                if(CPK_IS_ERROR(tmp->header))
+                    goto error;
+                obj->container.obj[i] = tmp;
+            }
+
+            break;
+    }
+
+ end:
+    return obj;
+
+ error:
+    if(CPK_IS_ERROR(obj->header))
+        return obj;
+
+    cpk_free_r(obj);
+    return tmp;
+}
+
+void cpk_free_r(cpk_object_t *obj) {
+    cpk_object_t *tmp = NULL;
+    uint32_t i = 0;
+    
+    if(!obj) return;
+
+    switch(cpk_decode_header(obj->header)) {
+        case CPK_REMOTE_REF:
+            cpk_free_r(obj->rref.val);
+            break;
+
+        case CPK_CONS:
+            cpk_free_r(obj->cons.car);
+            cpk_free_r(obj->cons.cdr);
+            break;
+
+        case CPK_CONTAINER:
+            for(i = 0; i < obj->container.size; i++) {
+                if(obj->container.obj[i])
+                    cpk_free_r(obj->container.obj[i]);
+                else
+                    break;
+            }
+
+            free(obj->container.obj);
+            break;
+    }
+
+    free(obj);
 }

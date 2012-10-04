@@ -282,8 +282,9 @@ int cpk_read64(cpk_input_t *in, uint64_t *dest);
 int cpk_read_bytes(cpk_input_t *in, uint8_t *dest, size_t len);
 
 uint8_t cpk_decode_header(uint8_t header);
-void cpk_decode(cpk_input_t *in, cpk_object_t *obj);
+void cpk_decode(cpk_input_t *in, cpk_object_t *obj, int skip_header);
 cpk_object_t* cpk_decode_r(cpk_input_t *in);
+cpk_object_t* cpk_decode_rh(cpk_input_t *in, uint8_t header);
 
 void cpk_free(cpk_object_t *obj);
 void cpk_free_r(cpk_object_t *obj);

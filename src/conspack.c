@@ -33,110 +33,16 @@ void cpk_print_buffer(cpk_output_t *out) {
 
 int main() {
     cpk_output_t out;
-    cpk_object_t obj, a, b;
-    int i, j;
+    cpk_input_t in;
+    cpk_object_t *obj;
+    uint8_t data[] = { 36, 3, 20, 1, 2, 3 };
 
     cpk_output_init(&out);
+    cpk_input_init(&in, data, sizeof(data));
 
-    obj.header = CPK_SYMBOL;
-    obj.symbol.name = &a;
-    obj.symbol.package = &b;
-
-    a.header = CPK_STRING | CPK_SIZE_8;
-    a.string.size = sizeof("name") - 1;
-    a.string.data = "name";
-
-    b.header = CPK_STRING | CPK_SIZE_8;
-    b.string.size = sizeof("package") - 1;
-    b.string.data = "package";
-        
-    cpk_explain_object(&out, &obj);
+    obj = cpk_decode_r(&in);
+    
+    cpk_explain_object(&out, obj);
     cpk_print(&out);
 }
 
-cpk_object_t* cpk_decode_r(cpk_input_t *in) {
-    cpk_object_t *obj = calloc(1, sizeof(cpk_object_t)),
-                 *tmp = NULL;
-    uint32_t i = 0;
-
-    cpk_decode(in, obj);
-    if(CPK_IS_ERROR(tmp->header))
-        goto error;
-
-    switch(cpk_decode_header(obj->header)) {
-        case CPK_REMOTE_REF:
-            tmp = cpk_decode_r(in);
-            if(CPK_IS_ERROR(tmp->header))
-                goto error;
-            
-            obj->rref.val = tmp;
-            break;
-
-        case CPK_CONS:
-            tmp = cpk_decode_r(in);
-            if(CPK_IS_ERROR(tmp->header))
-                goto error;
-
-            obj->cons.car = tmp;
-
-            tmp = cpk_decode_r(in);
-            if(CPK_IS_ERROR(tmp->header))
-                goto error;
-
-            obj->cons.cdr = tmp;
-            break;
-
-        case CPK_CONTAINER:
-            obj->container.obj = calloc(obj->container.size,
-                                        sizeof(cpk_object_t*));
-            for(i = 0; i < obj->container.size; i++) {
-                tmp = cpk_decode_r(in);
-                if(CPK_IS_ERROR(tmp->header))
-                    goto error;
-                obj->container.obj[i] = tmp;
-            }
-
-            break;
-    }
-
- end:
-    return obj;
-
- error:
-    if(CPK_IS_ERROR(obj->header))
-        return obj;
-
-    cpk_free_r(obj);
-    return tmp;
-}
-
-void cpk_free_r(cpk_object_t *obj) {
-    cpk_object_t *tmp = NULL;
-    uint32_t i = 0;
-    
-    if(!obj) return;
-
-    switch(cpk_decode_header(obj->header)) {
-        case CPK_REMOTE_REF:
-            cpk_free_r(obj->rref.val);
-            break;
-
-        case CPK_CONS:
-            cpk_free_r(obj->cons.car);
-            cpk_free_r(obj->cons.cdr);
-            break;
-
-        case CPK_CONTAINER:
-            for(i = 0; i < obj->container.size; i++) {
-                if(obj->container.obj[i])
-                    cpk_free_r(obj->container.obj[i]);
-                else
-                    break;
-            }
-
-            free(obj->container.obj);
-            break;
-    }
-
-    free(obj);
-}
