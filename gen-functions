@@ -1,35 +1,28 @@
 ############################################# -*- sh -*- ##############
 # Useful functions
-function initialize () {
+initialize () {
     local test_type="$2" file="$3"
 
     PROJECT="$1"
-    SRCDIR=`dirname $0`; [ -z "$SRCDIR" ] && SRCDIR=.
-    ORIGDIR=`pwd`
-    cd $SRCDIR
-
     DIE=0
 
     if [ ! $test_type $file ]; then
-	echo "You must run this script in the top-level $PROJECT directory"
+	echo "Could not find the top-level $PROJECT directory"
 	DIE=1
     fi
-}
 
-function finalize () {
-    cd $ORIGDIR
-
-    if [ "$1" != "--generate-only" ]; then
-        $SRCDIR/configure --enable-debug "$@"
-
-        if [ $? -eq 0 ]; then
-            echo 
-            echo "Now type 'make' to compile $PROJECT."
+    if [ "x$LIBTOOL" = "x" ]; then
+        if [ -x "`which glibtool 2> /dev/null`" ]; then
+            LIBTOOL="glibtool"
+            LIBTOOLIZE="glibtoolize"
+        else
+            LIBTOOL="libtool"
+            LIBTOOLIZE="libtoolize"
         fi
     fi
 }
 
-function check_ver () {
+check_ver () {
     local ver="$1" reqver="$2" vdigit="" rdigit=""
 
     until [ -z "$ver" ]; do
@@ -60,7 +53,7 @@ function check_ver () {
     BADVER=0
 }
 
-function check_prog () {
+check_prog () {
     local prog="$1" vercmd="$2" ver="" reqver="$3" action="$4" url="$5"
     local msg="You must have $prog $reqver to $action. Please acquire it from $url or a mirror."
 
@@ -78,17 +71,17 @@ function check_prog () {
     fi
 }
 
-function check_cc () {
+check_cc () {
     case $CC in
         *xlc | *xlc\ * | *lcc | *lcc\ *) am_opt=--include-deps;;
     esac
 }
 
-function checks_or_die () {
+checks_or_die () {
     if [ "$DIE" = "1" ]; then exit 1; fi
 }
 
-function generate () {
+generate () {
     local autogen_dirs="$@"
 
     if [ -z "$autogen_dirs" ]; then
@@ -112,16 +105,16 @@ function generate () {
         fi
 
 	cd $i
-	aclocal $ACLOCAL_FLAGS
+	aclocal -I aclocal --install $ACLOCAL_FLAGS
 
 	# optionally feature autoheader
-	if grep AM_CONFIG_HEADER configure.ac >/dev/null ; then
+	if grep AC_CONFIG_HEADERS configure.ac >/dev/null ; then
 	    (autoheader --version)  < /dev/null > /dev/null 2>&1 && autoheader
 	fi
 
         # It seems that libtool 1.4.2 doesn't give call libtoolize anymore
         if grep AC_PROG_LIBTOOL configure.ac >/dev/null; then
-            libtoolize --automake --force
+            $LIBTOOLIZE --automake --force
         fi
 
 	automake --add-missing $am_opt

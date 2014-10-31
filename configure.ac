@@ -1,15 +1,15 @@
-dnl $Id$
+AC_CONFIG_MACRO_DIR([aclocal])
 
 dnl Bookkeeping
-AC_PREREQ(2.52)
-AC_REVISION($Id$)
+AC_PREREQ([2.69])
 
 dnl Initialize autoconf and automake
-AC_INIT([PROJECT], [0.0.0])
+AC_INIT(libconspack, [0.0.0])
 AC_SUBST([PACKAGE_NAME])dnl
 
-AM_INIT_AUTOMAKE
-AM_CONFIG_HEADER([defs.h])
+AM_INIT_AUTOMAKE([subdir-objects])
+AM_SILENT_RULES([yes])
+AC_CONFIG_HEADERS([defs.h])
 
 dnl Various required programs
 AC_PROG_CC
