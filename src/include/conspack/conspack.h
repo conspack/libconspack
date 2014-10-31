@@ -103,7 +103,7 @@
 #define CPK_IS_STRING(h) (((h) & CPK_STRING_MASK) == CPK_STRING)
 #define CPK_IS_REF(h) ((((h) & CPK_REF_MASK) == CPK_REF) || \
                        (((h) & CPK_REF_INLINE_MASK) == (CPK_REF | CPK_REFTAG_INLINE)))
-#define CPK_IS_REMOTE_REF(h) (((h) & CPK_REMOTE_REF) == CPK_REMOTE_REF)
+#define CPK_IS_REMOTE_REF(h) (((h) & CPK_REMOTE_REF_MASK) == CPK_REMOTE_REF)
 #define CPK_IS_TAG(h) ((((h) & CPK_TAG_MASK) == CPK_TAG) || \
                        (((h) & CPK_TAG_INLINE_MASK) == (CPK_TAG | CPK_REFTAG_INLINE)))
 #define CPK_IS_CONS(h) (((h) & CPK_CONS_MASK) == CPK_CONS)
