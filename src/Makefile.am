@@ -7,6 +7,6 @@ SUBDIRS = include test
 lib_LTLIBRARIES = libconspack.la
 libconspack_la_SOURCES = encode.c decode.c explain.c
 
-bin_PROGRAMS = conspack
+noinst_PROGRAMS = conspack
 conspack_SOURCES = conspack.c
 conspack_LDADD = libconspack.la
