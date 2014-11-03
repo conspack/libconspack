@@ -45,6 +45,9 @@
 #define CPK_REMOTE_REF            0x64
 #define CPK_REMOTE_REF_MASK       0xFF
 
+#define CPK_POINTER               0x68
+#define CPK_POINTER_MASK          0xFC
+
 #define CPK_TAG                   0xE0
 #define CPK_TAG_MASK              0xFC
 #define CPK_TAG_INLINE_MASK       0xF0
@@ -57,6 +60,12 @@
 
 #define CPK_SYMBOL                0x82
 #define CPK_SYMBOL_MASK           0xFE
+
+#define CPK_CHAR                  0x84
+#define CPK_CHAR_MASK             0xFC
+
+#define CPK_PROPERTIES            0x88
+#define CPK_PROPERTIES_MASK       0xFF
 
 #define CPK_INDEX                 0xA0
 #define CPK_INDEX_MASK            0xE0
@@ -104,12 +113,15 @@
 #define CPK_IS_REF(h) ((((h) & CPK_REF_MASK) == CPK_REF) || \
                        (((h) & CPK_REF_INLINE_MASK) == (CPK_REF | CPK_REFTAG_INLINE)))
 #define CPK_IS_REMOTE_REF(h) (((h) & CPK_REMOTE_REF_MASK) == CPK_REMOTE_REF)
+#define CPK_IS_POINTER(h) (((h) & CPK_POINTER_MASK) == CPK_POINTER)
 #define CPK_IS_TAG(h) ((((h) & CPK_TAG_MASK) == CPK_TAG) || \
                        (((h) & CPK_TAG_INLINE_MASK) == (CPK_TAG | CPK_REFTAG_INLINE)))
 #define CPK_IS_CONS(h) (((h) & CPK_CONS_MASK) == CPK_CONS)
 #define CPK_IS_PACKAGE(h) (((h) & CPK_PACKAGE_MASK) == CPK_PACKAGE)
 #define CPK_IS_SYMBOL(h) (((h) & CPK_SYMBOL_MASK) == CPK_SYMBOL)
 #define CPK_IS_KEYWORD(h) (CPK_IS_SYMBOL(h) && ((h) & 1))
+#define CPK_IS_CHAR(h) (((h) & CPK_CHAR_MASK) == CPK_CHAR)
+#define CPK_IS_PROPERTIES(h) (((h) & CPK_PROPERTIES_MASK) == CPK_PROPERTIES)
 #define CPK_IS_INDEX(h) (((h) & CPK_INDEX_MASK) == CPK_INDEX)
 
 #define CPK_IS_ERROR(h) ((h) == CPK_ERROR)
